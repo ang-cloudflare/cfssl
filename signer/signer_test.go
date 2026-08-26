@@ -2,6 +2,7 @@ package signer
 
 import (
 	"bytes"
+	"crypto/mldsa"
 	"crypto/x509"
 	"encoding/asn1"
 	"encoding/hex"
@@ -179,4 +180,29 @@ func TestName(t *testing.T) {
 		t.Errorf("Locality: want %s, got %s", []string{"CA"}, name.Locality)
 	}
 
+}
+
+func TestDefaultSigAlgoMLDSA(t *testing.T) {
+	tests := []struct {
+		name   string
+		params mldsa.Parameters
+		want   x509.SignatureAlgorithm
+	}{
+		{"MLDSA44", mldsa.MLDSA44(), x509.MLDSA44},
+		{"MLDSA65", mldsa.MLDSA65(), x509.MLDSA65},
+		{"MLDSA87", mldsa.MLDSA87(), x509.MLDSA87},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			priv, err := mldsa.GenerateKey(tt.params)
+			if err != nil {
+				t.Fatalf("GenerateKey failed: %v", err)
+			}
+			got := DefaultSigAlgo(priv)
+			if got != tt.want {
+				t.Errorf("DefaultSigAlgo() = %v, want %v", got, tt.want)
+			}
+		})
+	}
 }

@@ -24,6 +24,9 @@ var validKeyParams = []csr.KeyRequest{
 	{A: "ecdsa", S: 384},
 	{A: "ecdsa", S: 521},
 	{A: "ed25519"},
+	{A: "mldsa44"},
+	{A: "mldsa65"},
+	{A: "mldsa87"},
 }
 
 var validCAConfigs = []csr.CAConfig{
@@ -63,6 +66,8 @@ var invalidCryptoParams = []csr.KeyRequest{
 	// Bad param
 	{A: "rsaCrypto", S: 2048},
 	{A: "ecdsa", S: 2000},
+	// Invalid ML-DSA variant
+	{A: "mldsa99"},
 }
 
 func TestInitCA(t *testing.T) {
