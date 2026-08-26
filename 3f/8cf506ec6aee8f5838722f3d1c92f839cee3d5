@@ -1,0 +1,21 @@
+go.sum
+  s_fa5d310f4d3eec::t_8032ef0663bddf 163,225,229,306,542,690,707
+signer/local/local_test.go
+  s_fa5d310f4d3eec::t_a3a566e630c65a 1466-1477,1479,1485,1491,1588,1593-1594,1601,1606-1607,1615,1619-1620
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "3f8cf506ec6aee8f5838722f3d1c92f839cee3d5",
+  "prompts": {},
+  "sessions": {
+    "s_fa5d310f4d3eec": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fbfe73f63ffejysjtfR4fr19Ds",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Alex Ng <ang@cloudflare.com>"
+    }
+  }
+}
