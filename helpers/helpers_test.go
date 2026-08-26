@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/elliptic"
+	"crypto/mldsa"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -99,7 +100,7 @@ func TestKeyLength(t *testing.T) {
 	}
 
 	// test the rsa branch
-	rsaPriv, _ := rsa.GenerateKey(rand.Reader, 256)
+	rsaPriv, _ := rsa.GenerateKey(rand.Reader, 2048)
 	rsaIn, _ := rsaPriv.Public().(*rsa.PublicKey)
 	expRsa := rsaIn.N.BitLen()
 	outRsa := KeyLength(rsaIn)
@@ -675,5 +676,30 @@ func TestSCTListFromOCSPResponse(t *testing.T) {
 	}
 	if !sctEquals(zeroSCT, lst[0]) {
 		t.Fatal("SCTs don't match")
+	}
+}
+
+func TestSignerAlgoMLDSA(t *testing.T) {
+	tests := []struct {
+		name   string
+		params mldsa.Parameters
+		want   x509.SignatureAlgorithm
+	}{
+		{"MLDSA44", mldsa.MLDSA44(), x509.MLDSA44},
+		{"MLDSA65", mldsa.MLDSA65(), x509.MLDSA65},
+		{"MLDSA87", mldsa.MLDSA87(), x509.MLDSA87},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			priv, err := mldsa.GenerateKey(tt.params)
+			if err != nil {
+				t.Fatalf("GenerateKey failed: %v", err)
+			}
+			got := SignerAlgo(priv)
+			if got != tt.want {
+				t.Errorf("SignerAlgo() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }

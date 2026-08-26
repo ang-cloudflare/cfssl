@@ -1463,20 +1463,32 @@ func TestSignFromPrecert(t *testing.T) {
 		t.Fatal("Certificate without SCT list extension was returned")
 	}
 
+	// Find CT poison extension index by OID
+	poisonIdx := -1
+	for i, ext := range precert.Extensions {
+		if ext.Id.Equal(signer.CTPoisonOID) {
+			poisonIdx = i
+			break
+		}
+	}
+	if poisonIdx == -1 {
+		t.Fatal("precert does not contain CT poison extension")
+	}
+
 	// Break poison extension
-	precert.Extensions[7].Value = []byte{1, 3, 3, 7}
+	precert.Extensions[poisonIdx].Value = []byte{1, 3, 3, 7}
 	_, err = testSigner.SignFromPrecert(precert, scts)
 	if err == nil {
 		t.Fatal("SignFromPrecert didn't fail with invalid poison extension")
 	}
 
-	precert.Extensions[7].Critical = false
+	precert.Extensions[poisonIdx].Critical = false
 	_, err = testSigner.SignFromPrecert(precert, scts)
 	if err == nil {
 		t.Fatal("SignFromPrecert didn't fail with non-critical poison extension")
 	}
 
-	precert.Extensions = append(precert.Extensions[:7], precert.Extensions[8:]...)
+	precert.Extensions = append(precert.Extensions[:poisonIdx], precert.Extensions[poisonIdx+1:]...)
 	_, err = testSigner.SignFromPrecert(precert, scts)
 	if err == nil {
 		t.Fatal("SignFromPrecert didn't fail with missing poison extension")
@@ -1573,22 +1585,26 @@ func TestLint(t *testing.T) {
 			name:         "lint results above err level",
 			signer:       lintSigner,
 			lintErrLevel: lint.Notice,
-			expectedErr:  errors.New("pre-issuance linting found 3 error results"),
+			expectedErr:  errors.New("pre-issuance linting found 5 error results"),
 			expectedErrResults: map[string]lint.LintResult{
 				"e_sub_cert_aia_does_not_contain_ocsp_url": {Status: 6},
 				"e_dnsname_not_valid_tld":                  {Status: 6},
 				"e_ecdsa_allowed_ku":                       {Status: 6, Details: "Certificate contains invalid key usage(s): KeyUsageKeyEncipherment"},
+				"e_sub_cert_cert_policy_empty":             {Status: 6},
+				"e_sub_cert_certificate_policies_missing":  {Status: 6},
 			},
 		},
 		{
 			name:         "lint results below err level",
 			signer:       lintSigner,
 			lintErrLevel: lint.Warn,
-			expectedErr:  errors.New("pre-issuance linting found 3 error results"),
+			expectedErr:  errors.New("pre-issuance linting found 5 error results"),
 			expectedErrResults: map[string]lint.LintResult{
 				"e_sub_cert_aia_does_not_contain_ocsp_url": {Status: 6},
 				"e_dnsname_not_valid_tld":                  {Status: 6},
 				"e_ecdsa_allowed_ku":                       {Status: 6, Details: "Certificate contains invalid key usage(s): KeyUsageKeyEncipherment"},
+				"e_sub_cert_cert_policy_empty":             {Status: 6},
+				"e_sub_cert_certificate_policies_missing":  {Status: 6},
 			},
 		},
 		{
@@ -1596,10 +1612,12 @@ func TestLint(t *testing.T) {
 			signer:       lintSigner,
 			lintErrLevel: lint.Notice,
 			lintRegistry: ignoredLintNameRegistry,
-			expectedErr:  errors.New("pre-issuance linting found 2 error results"),
+			expectedErr:  errors.New("pre-issuance linting found 4 error results"),
 			expectedErrResults: map[string]lint.LintResult{
 				"e_sub_cert_aia_does_not_contain_ocsp_url": {Status: 6},
 				"e_ecdsa_allowed_ku":                       {Status: 6, Details: "Certificate contains invalid key usage(s): KeyUsageKeyEncipherment"},
+				"e_sub_cert_cert_policy_empty":             {Status: 6},
+				"e_sub_cert_certificate_policies_missing":  {Status: 6},
 			},
 		},
 		{

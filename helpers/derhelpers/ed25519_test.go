@@ -3,6 +3,8 @@ package derhelpers
 import (
 	"bytes"
 	"crypto/ed25519"
+	"crypto/mldsa"
+	"crypto/x509"
 	"encoding/pem"
 	"testing"
 )
@@ -94,5 +96,44 @@ func TestKeyPair(t *testing.T) {
 	if !bytes.Equal(pk, pk2) {
 		t.Errorf("pk %d bytes:\n%v \nsk.Public() %d bytes:\n%v",
 			len(pk), pk, len(pk2), pk2)
+	}
+}
+
+func TestParsePrivateKeyDERMLDSA(t *testing.T) {
+	tests := []struct {
+		name   string
+		params mldsa.Parameters
+	}{
+		{"MLDSA44", mldsa.MLDSA44()},
+		{"MLDSA65", mldsa.MLDSA65()},
+		{"MLDSA87", mldsa.MLDSA87()},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			priv, err := mldsa.GenerateKey(tt.params)
+			if err != nil {
+				t.Fatalf("GenerateKey failed: %v", err)
+			}
+
+			der, err := x509.MarshalPKCS8PrivateKey(priv)
+			if err != nil {
+				t.Fatalf("MarshalPKCS8PrivateKey failed: %v", err)
+			}
+
+			parsed, err := ParsePrivateKeyDER(der)
+			if err != nil {
+				t.Fatalf("ParsePrivateKeyDER failed: %v", err)
+			}
+
+			mldsaKey, ok := parsed.(*mldsa.PrivateKey)
+			if !ok {
+				t.Fatalf("expected *mldsa.PrivateKey, got %T", parsed)
+			}
+
+			if mldsaKey.PublicKey().Parameters() != tt.params {
+				t.Fatalf("parameters mismatch after round-trip")
+			}
+		})
 	}
 }

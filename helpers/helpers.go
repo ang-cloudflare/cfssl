@@ -8,6 +8,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/elliptic"
+	"crypto/mldsa"
 	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
@@ -502,6 +503,17 @@ func SignerAlgo(priv crypto.Signer) x509.SignatureAlgorithm {
 		}
 	case ed25519.PublicKey:
 		return x509.PureEd25519
+	case *mldsa.PublicKey:
+		switch {
+		case pub.Parameters() == mldsa.MLDSA44():
+			return x509.MLDSA44
+		case pub.Parameters() == mldsa.MLDSA65():
+			return x509.MLDSA65
+		case pub.Parameters() == mldsa.MLDSA87():
+			return x509.MLDSA87
+		default:
+			return x509.UnknownSignatureAlgorithm
+		}
 	default:
 		return x509.UnknownSignatureAlgorithm
 	}
