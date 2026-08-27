@@ -7,6 +7,7 @@ import (
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/ed25519"
+	"crypto/mldsa"
 	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
@@ -597,6 +598,14 @@ func (b *Bundler) Bundle(certs []*x509.Certificate, key crypto.Signer, flavor Bu
 			if !(bytes.Equal(cert.PublicKey.(ed25519.PublicKey), ed25519PublicKey)) {
 				return nil, errors.New(errors.PrivateKeyError, errors.KeyMismatch)
 			}
+		case cert.PublicKeyAlgorithm == x509.MLDSA:
+			var mldsaPublicKey *mldsa.PublicKey
+			if mldsaPublicKey, ok = key.Public().(*mldsa.PublicKey); !ok {
+				return nil, errors.New(errors.PrivateKeyError, errors.KeyMismatch)
+			}
+			if !cert.PublicKey.(*mldsa.PublicKey).Equal(mldsaPublicKey) {
+				return nil, errors.New(errors.PrivateKeyError, errors.KeyMismatch)
+			}
 		default:
 			return nil, errors.New(errors.PrivateKeyError, errors.NotRSAOrECCOrEd25519)
 		}
@@ -605,6 +614,7 @@ func (b *Bundler) Bundle(certs []*x509.Certificate, key crypto.Signer, flavor Bu
 		case cert.PublicKeyAlgorithm == x509.RSA:
 		case cert.PublicKeyAlgorithm == x509.ECDSA:
 		case cert.PublicKeyAlgorithm == x509.Ed25519:
+		case cert.PublicKeyAlgorithm == x509.MLDSA:
 		default:
 			return nil, errors.New(errors.PrivateKeyError, errors.NotRSAOrECCOrEd25519)
 		}

@@ -74,6 +74,15 @@ func KeyLength(key interface{}) int {
 		return rsaKey.N.BitLen()
 	} else if _, ok := key.(ed25519.PublicKey); ok {
 		return ed25519.PublicKeySize
+	} else if mldsaKey, ok := key.(*mldsa.PublicKey); ok {
+		switch {
+		case mldsaKey.Parameters() == mldsa.MLDSA44():
+			return 1312
+		case mldsaKey.Parameters() == mldsa.MLDSA65():
+			return 1952
+		case mldsaKey.Parameters() == mldsa.MLDSA87():
+			return 2592
+		}
 	}
 
 	return 0
@@ -157,6 +166,12 @@ func SignatureString(alg x509.SignatureAlgorithm) string {
 		return "ECDSAWithSHA512"
 	case x509.PureEd25519:
 		return "Ed25519"
+	case x509.MLDSA44:
+		return "MLDSA44"
+	case x509.MLDSA65:
+		return "MLDSA65"
+	case x509.MLDSA87:
+		return "MLDSA87"
 	default:
 		return "Unknown Signature"
 	}
@@ -192,6 +207,12 @@ func HashAlgoString(alg x509.SignatureAlgorithm) string {
 		return "SHA512"
 	case x509.PureEd25519:
 		return "Ed25519"
+	case x509.MLDSA44:
+		return "MLDSA44"
+	case x509.MLDSA65:
+		return "MLDSA65"
+	case x509.MLDSA87:
+		return "MLDSA87"
 	default:
 		return "Unknown Hash Algorithm"
 	}
