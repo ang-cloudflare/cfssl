@@ -99,6 +99,49 @@ func TestKeyPair(t *testing.T) {
 	}
 }
 
+// TestParsePrivateKeyDERMLDSARFC9881 verifies round-trip parsing of the
+// ML-DSA-44 example private key from RFC 9881.
+func TestParsePrivateKeyDERMLDSARFC9881(t *testing.T) {
+	const rfc9881PEM = `-----BEGIN PRIVATE KEY-----
+MDQCAQAwCwYJYIZIAWUDBAMRBCKAIAABAgMEBQYHCAkKCwwNDg8QERITFBUWFxgZ
+GhscHR4f
+-----END PRIVATE KEY-----`
+
+	block, _ := pem.Decode([]byte(rfc9881PEM))
+	if block == nil {
+		t.Fatal("failed to decode RFC 9881 PEM")
+	}
+
+	parsed, err := ParsePrivateKeyDER(block.Bytes)
+	if err != nil {
+		t.Fatalf("ParsePrivateKeyDER failed: %v", err)
+	}
+
+	mldsaKey, ok := parsed.(*mldsa.PrivateKey)
+	if !ok {
+		t.Fatalf("expected *mldsa.PrivateKey, got %T", parsed)
+	}
+
+	if mldsaKey.PublicKey().Parameters() != mldsa.MLDSA44() {
+		t.Fatalf("expected MLDSA44 parameters, got %v", mldsaKey.PublicKey().Parameters())
+	}
+
+	// Verify round-trip: marshal back to PKCS#8 and re-parse
+	der, err := x509.MarshalPKCS8PrivateKey(mldsaKey)
+	if err != nil {
+		t.Fatalf("MarshalPKCS8PrivateKey failed: %v", err)
+	}
+
+	reparsed, err := ParsePrivateKeyDER(der)
+	if err != nil {
+		t.Fatalf("ParsePrivateKeyDER round-trip failed: %v", err)
+	}
+
+	if !reparsed.(*mldsa.PrivateKey).PublicKey().Equal(mldsaKey.PublicKey()) {
+		t.Fatal("public keys differ after round-trip")
+	}
+}
+
 func TestParsePrivateKeyDERMLDSA(t *testing.T) {
 	tests := []struct {
 		name   string
