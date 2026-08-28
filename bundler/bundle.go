@@ -114,7 +114,20 @@ func (b *Bundle) MarshalJSON() ([]byte, error) {
 	case x509.Ed25519:
 		keyType = "Ed25519"
 	case x509.MLDSA:
-		keyType = fmt.Sprintf("%d-byte ML-DSA", keyLength)
+		if pub, ok := b.Cert.PublicKey.(*mldsa.PublicKey); ok {
+			switch {
+			case pub.Parameters() == mldsa.MLDSA44():
+				keyType = "ML-DSA-44"
+			case pub.Parameters() == mldsa.MLDSA65():
+				keyType = "ML-DSA-65"
+			case pub.Parameters() == mldsa.MLDSA87():
+				keyType = "ML-DSA-87"
+			default:
+				keyType = "ML-DSA"
+			}
+		} else {
+			keyType = "ML-DSA"
+		}
 	default:
 		keyType = "Unknown"
 	}

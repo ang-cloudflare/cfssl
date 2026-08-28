@@ -75,14 +75,7 @@ func KeyLength(key interface{}) int {
 	} else if _, ok := key.(ed25519.PublicKey); ok {
 		return ed25519.PublicKeySize
 	} else if mldsaKey, ok := key.(*mldsa.PublicKey); ok {
-		switch {
-		case mldsaKey.Parameters() == mldsa.MLDSA44():
-			return 1312
-		case mldsaKey.Parameters() == mldsa.MLDSA65():
-			return 1952
-		case mldsaKey.Parameters() == mldsa.MLDSA87():
-			return 2592
-		}
+		return mldsaKey.Parameters().PublicKeySize()
 	}
 
 	return 0
