@@ -10,10 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        # starting with go 1.24 the GODEBUG=x509sha1=1 flag has been removed.
-        # many tests rely on sha1 certificates. After resolving #1413 we can
-        # run these on stable and oldstable again. Min version (1.20) can
-        # always be run.
+        # ML-DSA requires Go 1.27. The SHA-1 test fixtures must be updated by
+        # #1434 because Go 1.24 removed the x509sha1 GODEBUG override.
         go: ['1.27']
     services:
       # Label used to access the service container
@@ -46,7 +44,6 @@ jobs:
 
     env:
       GOFLAGS: "-mod=vendor"
-      GODEBUG: "x509sha1=1"
       BUILD_TAGS: "postgresql"
       PGHOST: localhost
       MYSQL_HOST: 127.0.0.1
@@ -68,6 +65,13 @@ jobs:
       - run: ./bin/goose -path certdb/mysql up;
       - name: Test
         run: ./test.sh
+      - name: Test ML-DSA in FIPS mode
+        env:
+          GOFIPS140: latest
+          GODEBUG: "fips140=on"
+        run: |
+          go test ./csr ./signer ./helpers ./helpers/derhelpers ./crl -run MLDSA
+          go test ./initca -run '^TestInitCA$'
       - uses: codecov/codecov-action@v4
 
   golangci:
