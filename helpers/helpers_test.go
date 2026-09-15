@@ -284,6 +284,28 @@ func TestSignatureString(t *testing.T) {
 	}
 }
 
+func TestMLDSAAlgorithmStrings(t *testing.T) {
+	tests := []struct {
+		name string
+		algo x509.SignatureAlgorithm
+	}{
+		{name: "MLDSA44", algo: x509.MLDSA44},
+		{name: "MLDSA65", algo: x509.MLDSA65},
+		{name: "MLDSA87", algo: x509.MLDSA87},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := SignatureString(tt.algo); got != tt.name {
+				t.Errorf("SignatureString(%v) = %q, want %q", tt.algo, got, tt.name)
+			}
+			if got := HashAlgoString(tt.algo); got != tt.name {
+				t.Errorf("HashAlgoString(%v) = %q, want %q", tt.algo, got, tt.name)
+			}
+		})
+	}
+}
+
 func TestParseCertificatePEM(t *testing.T) {
 	for _, testFile := range []string{testCertFile, testExtraWSCertFile, testSinglePKCS7} {
 		certPEM, err := os.ReadFile(testFile)

@@ -1504,6 +1504,10 @@ func TestSignFromPrecert(t *testing.T) {
 func TestLint(t *testing.T) {
 	k, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	serial := big.NewInt(1337)
+	policyOID, err := x509.OIDFromInts([]uint64{1, 2, 3})
+	if err != nil {
+		t.Fatalf("failed to construct certificate policy OID: %v", err)
+	}
 
 	// jankyTemplate is an x509 cert template that mostly passes through zlint
 	// without errors/warnings. It is used as the basis of both the signer's issuing
@@ -1512,14 +1516,12 @@ func TestLint(t *testing.T) {
 		Subject: pkix.Name{
 			CommonName: "janky.cert",
 		},
-		SerialNumber: serial,
-		NotBefore:    time.Now(),
-		NotAfter:     time.Now().AddDate(0, 0, 90),
-		KeyUsage:     x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
-		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
-		PolicyIdentifiers: []asn1.ObjectIdentifier{
-			{1, 2, 3},
-		},
+		SerialNumber:          serial,
+		NotBefore:             time.Now(),
+		NotAfter:              time.Now().AddDate(0, 0, 90),
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
+		Policies:              []x509.OID{policyOID},
 		BasicConstraintsValid: true,
 		IsCA:                  true,
 		IssuingCertificateURL: []string{"http://ca.cpu"},
@@ -1585,26 +1587,22 @@ func TestLint(t *testing.T) {
 			name:         "lint results above err level",
 			signer:       lintSigner,
 			lintErrLevel: lint.Notice,
-			expectedErr:  errors.New("pre-issuance linting found 5 error results"),
+			expectedErr:  errors.New("pre-issuance linting found 3 error results"),
 			expectedErrResults: map[string]lint.LintResult{
 				"e_sub_cert_aia_does_not_contain_ocsp_url": {Status: 6},
 				"e_dnsname_not_valid_tld":                  {Status: 6},
 				"e_ecdsa_allowed_ku":                       {Status: 6, Details: "Certificate contains invalid key usage(s): KeyUsageKeyEncipherment"},
-				"e_sub_cert_cert_policy_empty":             {Status: 6},
-				"e_sub_cert_certificate_policies_missing":  {Status: 6},
 			},
 		},
 		{
 			name:         "lint results below err level",
 			signer:       lintSigner,
 			lintErrLevel: lint.Warn,
-			expectedErr:  errors.New("pre-issuance linting found 5 error results"),
+			expectedErr:  errors.New("pre-issuance linting found 3 error results"),
 			expectedErrResults: map[string]lint.LintResult{
 				"e_sub_cert_aia_does_not_contain_ocsp_url": {Status: 6},
 				"e_dnsname_not_valid_tld":                  {Status: 6},
 				"e_ecdsa_allowed_ku":                       {Status: 6, Details: "Certificate contains invalid key usage(s): KeyUsageKeyEncipherment"},
-				"e_sub_cert_cert_policy_empty":             {Status: 6},
-				"e_sub_cert_certificate_policies_missing":  {Status: 6},
 			},
 		},
 		{
@@ -1612,12 +1610,10 @@ func TestLint(t *testing.T) {
 			signer:       lintSigner,
 			lintErrLevel: lint.Notice,
 			lintRegistry: ignoredLintNameRegistry,
-			expectedErr:  errors.New("pre-issuance linting found 4 error results"),
+			expectedErr:  errors.New("pre-issuance linting found 2 error results"),
 			expectedErrResults: map[string]lint.LintResult{
 				"e_sub_cert_aia_does_not_contain_ocsp_url": {Status: 6},
 				"e_ecdsa_allowed_ku":                       {Status: 6, Details: "Certificate contains invalid key usage(s): KeyUsageKeyEncipherment"},
-				"e_sub_cert_cert_policy_empty":             {Status: 6},
-				"e_sub_cert_certificate_policies_missing":  {Status: 6},
 			},
 		},
 		{

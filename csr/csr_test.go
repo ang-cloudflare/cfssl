@@ -380,6 +380,16 @@ func TestMLDSAGenerationIgnoresSize(t *testing.T) {
 	}
 }
 
+func TestMLDSAUnknownVariant(t *testing.T) {
+	request := &KeyRequest{A: "mldsa99"}
+	if _, err := request.Generate(); err == nil {
+		t.Fatal("Generate() accepted an unknown ML-DSA variant")
+	}
+	if got := request.SigAlgo(); got != x509.UnknownSignatureAlgorithm {
+		t.Fatalf("SigAlgo() = %v, want UnknownSignatureAlgorithm", got)
+	}
+}
+
 func TestMLDSACertRequest(t *testing.T) {
 	tests := []string{"mldsa44", "mldsa65", "mldsa87"}
 	for _, algo := range tests {
