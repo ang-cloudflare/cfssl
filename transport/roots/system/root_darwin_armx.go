@@ -11,11 +11,9 @@
 
 package system
 
-import "crypto/x509"
-
-func initSystemRoots() []*x509.Certificate {
-	roots, _ := appendPEM(nil, []byte(systemRootsPEM))
-	return roots
+func initSystemRoots() {
+	systemRoots = NewCertPool()
+	systemRoots.AppendCertsFromPEM([]byte(systemRootsPEM))
 }
 
 const systemRootsPEM = `

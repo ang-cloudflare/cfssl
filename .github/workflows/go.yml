@@ -70,8 +70,8 @@ jobs:
           GOFIPS140: latest
           GODEBUG: "fips140=on"
         run: |
-          go test ./csr ./signer ./helpers ./helpers/derhelpers ./crl -run MLDSA
-          go test ./initca -run '^TestInitCA$'
+          go test ./csr ./signer ./helpers ./helpers/derhelpers ./crl ./bundler -run MLDSA
+          go test ./initca -run '^(TestInitCA|TestRenewMLDSA)$'
       - uses: codecov/codecov-action@v4
 
   golangci:
@@ -84,3 +84,5 @@ jobs:
           go-version: "1.27"
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.13.2
