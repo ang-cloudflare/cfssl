@@ -1,0 +1,19 @@
+signer/local/local_test.go
+  s_607ad535354c2e::t_8117f208b22a03 1507-1510,1519-1524,1590,1601,1613
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "6b5d327e36dad8db439a642272f23bd8904396eb",
+  "prompts": {},
+  "sessions": {
+    "s_607ad535354c2e": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f593c3a95ffekTO02lDJ65Tj6L",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Alex Ng <ang@cloudflare.com>"
+    }
+  }
+}
