@@ -1,0 +1,19 @@
+bundler/bundler_test.go
+  s_c06621ee9a3c09::t_67b174c23904ac 18-20,98,105,116,119-125,136,139-140,147,150-154,604-605,607-610,626-629,631,633-637
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "ea2095dd50d3250b5d8ec830ce82189e0b5888f2",
+  "prompts": {},
+  "sessions": {
+    "s_c06621ee9a3c09": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f54b72678ffeHsYu4fpTncZAG6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Alex Ng <ang@cloudflare.com>"
+    }
+  }
+}
