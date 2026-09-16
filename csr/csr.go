@@ -284,7 +284,7 @@ func ParseRequest(req *CertificateRequest) (csr, key []byte, err error) {
 			Bytes: key,
 		}
 		key = pem.EncodeToMemory(&block)
-	default:
+	case *mldsa.PrivateKey:
 		key, err = x509.MarshalPKCS8PrivateKey(priv)
 		if err != nil {
 			err = cferr.Wrap(cferr.PrivateKeyError, cferr.Unknown, err)
@@ -295,6 +295,10 @@ func ParseRequest(req *CertificateRequest) (csr, key []byte, err error) {
 			Bytes: key,
 		}
 		key = pem.EncodeToMemory(&block)
+	default:
+		err = cferr.Wrap(cferr.PrivateKeyError, cferr.Unknown,
+			fmt.Errorf("unsupported generated private key type %T", priv))
+		return
 	}
 
 	csr, err = Generate(priv.(crypto.Signer), req)
