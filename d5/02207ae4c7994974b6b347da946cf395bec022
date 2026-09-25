@@ -1,0 +1,19 @@
+bundler/testdata/negative-serial-root.pem
+  s_bc2186d8f5ba84::t_5bf7d4a009e863 1-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "d502207ae4c7994974b6b347da946cf395bec022",
+  "prompts": {},
+  "sessions": {
+    "s_bc2186d8f5ba84": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f2a01c385ffewYfAWDTfPlsI7f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Alex Ng <ang@cloudflare.com>"
+    }
+  }
+}
