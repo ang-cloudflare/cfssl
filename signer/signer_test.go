@@ -2,16 +2,25 @@ package signer
 
 import (
 	"bytes"
+	"crypto"
+	"crypto/ecdsa"
+	"crypto/ed25519"
+	"crypto/elliptic"
 	"crypto/mldsa"
+	"crypto/rand"
+	"crypto/rsa"
 	"crypto/x509"
 	"encoding/asn1"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/cloudflare/cfssl/config"
 	"github.com/cloudflare/cfssl/csr"
+	cferr "github.com/cloudflare/cfssl/errors"
 )
 
 func TestAppendIf(t *testing.T) {
@@ -202,6 +211,108 @@ func TestDefaultSigAlgoMLDSA(t *testing.T) {
 			got := DefaultSigAlgo(priv)
 			if got != tt.want {
 				t.Errorf("DefaultSigAlgo() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestFillTemplateMLDSAKeyUsage(t *testing.T) {
+	allKeyUsages := []string{
+		"signing", "digital signature", "content commitment", "key encipherment", "data encipherment",
+		"key agreement", "cert sign", "crl sign", "encipher only", "decipher only",
+	}
+	noKeyUsagesCode := cferr.New(cferr.PolicyError, cferr.NoKeyUsages).ErrorCode
+
+	tests := []struct {
+		name    string
+		usage   []string
+		wantKU  x509.KeyUsage
+		wantEKU []x509.ExtKeyUsage
+		wantErr bool
+	}{
+		{
+			name:    "DefaultProfileDropsKeyEncipherment",
+			usage:   config.DefaultConfig().Usage,
+			wantKU:  x509.KeyUsageDigitalSignature,
+			wantEKU: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
+		},
+		{
+			name:   "AllKeyUsagesKeepsOnlySignatureUsages",
+			usage:  allKeyUsages,
+			wantKU: x509.KeyUsageDigitalSignature | x509.KeyUsageContentCommitment | x509.KeyUsageCertSign | x509.KeyUsageCRLSign,
+		},
+		{
+			name:    "OnlyKeyEnciphermentReturnsNoKeyUsages",
+			usage:   []string{"key encipherment"},
+			wantErr: true,
+		},
+	}
+
+	for _, params := range []mldsa.Parameters{mldsa.MLDSA44(), mldsa.MLDSA65(), mldsa.MLDSA87()} {
+		key, err := mldsa.GenerateKey(params)
+		if err != nil {
+			t.Fatalf("GenerateKey(%v) failed: %v", params, err)
+		}
+		for _, tt := range tests {
+			t.Run(params.String()+"/"+tt.name, func(t *testing.T) {
+				profile := config.DefaultConfig()
+				profile.Usage = tt.usage
+				template := &x509.Certificate{PublicKey: key.PublicKey()}
+
+				err := FillTemplate(template, config.DefaultConfig(), profile, time.Time{}, time.Time{})
+				if tt.wantErr {
+					var cfErr *cferr.Error
+					if !errors.As(err, &cfErr) || cfErr.ErrorCode != noKeyUsagesCode {
+						t.Fatalf("FillTemplate() error = %v, want NoKeyUsages policy error (code %d)", err, noKeyUsagesCode)
+					}
+					return
+				}
+				if err != nil {
+					t.Fatalf("FillTemplate() failed: %v", err)
+				}
+				if template.KeyUsage != tt.wantKU {
+					t.Errorf("KeyUsage = %#b, want %#b", template.KeyUsage, tt.wantKU)
+				}
+				if !reflect.DeepEqual(template.ExtKeyUsage, tt.wantEKU) {
+					t.Errorf("ExtKeyUsage = %v, want %v", template.ExtKeyUsage, tt.wantEKU)
+				}
+			})
+		}
+	}
+}
+
+func TestFillTemplateClassicalKeyUsageUnchanged(t *testing.T) {
+	rsaKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatalf("generating RSA key: %v", err)
+	}
+	ecdsaKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatalf("generating ECDSA key: %v", err)
+	}
+	ed25519Pub, _, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatalf("generating Ed25519 key: %v", err)
+	}
+
+	tests := []struct {
+		name string
+		pub  crypto.PublicKey
+	}{
+		{"RSA", &rsaKey.PublicKey},
+		{"ECDSA", &ecdsaKey.PublicKey},
+		{"Ed25519", ed25519Pub},
+	}
+
+	const wantKU = x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			template := &x509.Certificate{PublicKey: tt.pub}
+			if err := FillTemplate(template, config.DefaultConfig(), config.DefaultConfig(), time.Time{}, time.Time{}); err != nil {
+				t.Fatalf("FillTemplate() failed: %v", err)
+			}
+			if template.KeyUsage != wantKU {
+				t.Errorf("KeyUsage = %#b, want %#b", template.KeyUsage, wantKU)
 			}
 		})
 	}

@@ -344,6 +344,27 @@ func ComputeSKI(template *x509.Certificate) ([]byte, error) {
 	return pubHash[:], nil
 }
 
+// mldsaForbiddenKeyUsages are the key usages that RFC 9881, Section 5
+// prohibits in the keyUsage extension of a certificate with an ML-DSA subject
+// public key.
+const mldsaForbiddenKeyUsages = x509.KeyUsageKeyEncipherment |
+	x509.KeyUsageDataEncipherment |
+	x509.KeyUsageKeyAgreement |
+	x509.KeyUsageEncipherOnly |
+	x509.KeyUsageDecipherOnly
+
+// KeyUsageForPublicKey returns ku without the key usages that are invalid for
+// the subject public key pub. For ML-DSA keys it clears keyEncipherment,
+// dataEncipherment, keyAgreement, encipherOnly and decipherOnly, which
+// RFC 9881 prohibits for a signature-only key. For all other key types ku is
+// returned unchanged.
+func KeyUsageForPublicKey(pub crypto.PublicKey, ku x509.KeyUsage) x509.KeyUsage {
+	if _, ok := pub.(*mldsa.PublicKey); ok {
+		return ku &^ mldsaForbiddenKeyUsages
+	}
+	return ku
+}
+
 // FillTemplate is a utility function that tries to load as much of
 // the certificate template as possible from the profiles and current
 // template. It fills in the key uses, expiration, revocation URLs
@@ -367,6 +388,7 @@ func FillTemplate(template *x509.Certificate, defaultProfile, profile *config.Si
 	// This should be used when validating the profile at load, and isn't used
 	// here.
 	ku, eku, _ = profile.Usages()
+	ku = KeyUsageForPublicKey(template.PublicKey, ku)
 	if profile.IssuerURL == nil {
 		issuerURL = defaultProfile.IssuerURL
 	}

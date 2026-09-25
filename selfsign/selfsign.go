@@ -98,6 +98,7 @@ func Sign(priv crypto.Signer, csrPEM []byte, profile *config.SigningProfile) ([]
 	// This should be used when validating the profile at load, and isn't used
 	// here.
 	ku, eku, _ = profile.Usages()
+	ku = signer.KeyUsageForPublicKey(pub, ku)
 	expiry = profile.Expiry
 
 	if ku == 0 && len(eku) == 0 {
