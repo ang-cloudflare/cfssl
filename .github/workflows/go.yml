@@ -10,8 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        # ML-DSA requires Go 1.27. The SHA-1 test fixtures must be updated by
-        # #1434 because Go 1.24 removed the x509sha1 GODEBUG override.
+        # Go 1.27 is the module minimum (crypto/mldsa).
         go: ['1.27']
     services:
       # Label used to access the service container
