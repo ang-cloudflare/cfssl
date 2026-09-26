@@ -226,6 +226,7 @@ func TestFillTemplateMLDSAKeyUsage(t *testing.T) {
 	tests := []struct {
 		name    string
 		usage   []string
+		isCA    bool
 		wantKU  x509.KeyUsage
 		wantEKU []x509.ExtKeyUsage
 		wantErr bool
@@ -246,6 +247,27 @@ func TestFillTemplateMLDSAKeyUsage(t *testing.T) {
 			usage:   []string{"key encipherment"},
 			wantErr: true,
 		},
+		{
+			name:    "OnlyKeyEnciphermentWithEKUReturnsNoKeyUsages",
+			usage:   []string{"key encipherment", "server auth"},
+			wantErr: true,
+		},
+		{
+			name:    "OnlyKeyAgreementWithEKUReturnsNoKeyUsages",
+			usage:   []string{"key agreement", "client auth"},
+			wantErr: true,
+		},
+		{
+			name:    "CAOnlyKeyEnciphermentWithEKUReturnsNoKeyUsages",
+			usage:   []string{"key encipherment", "server auth"},
+			isCA:    true,
+			wantErr: true,
+		},
+		{
+			name:    "OnlyEKUKeepsEKUWithoutKeyUsage",
+			usage:   []string{"server auth"},
+			wantEKU: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		},
 	}
 
 	for _, params := range []mldsa.Parameters{mldsa.MLDSA44(), mldsa.MLDSA65(), mldsa.MLDSA87()} {
@@ -257,6 +279,7 @@ func TestFillTemplateMLDSAKeyUsage(t *testing.T) {
 			t.Run(params.String()+"/"+tt.name, func(t *testing.T) {
 				profile := config.DefaultConfig()
 				profile.Usage = tt.usage
+				profile.CAConstraint.IsCA = tt.isCA
 				template := &x509.Certificate{PublicKey: key.PublicKey()}
 
 				err := FillTemplate(template, config.DefaultConfig(), profile, time.Time{}, time.Time{})
@@ -295,7 +318,7 @@ func TestFillTemplateClassicalKeyUsageUnchanged(t *testing.T) {
 		t.Fatalf("generating Ed25519 key: %v", err)
 	}
 
-	tests := []struct {
+	keys := []struct {
 		name string
 		pub  crypto.PublicKey
 	}{
@@ -303,17 +326,28 @@ func TestFillTemplateClassicalKeyUsageUnchanged(t *testing.T) {
 		{"ECDSA", &ecdsaKey.PublicKey},
 		{"Ed25519", ed25519Pub},
 	}
+	profiles := []struct {
+		name   string
+		usage  []string
+		wantKU x509.KeyUsage
+	}{
+		{"DefaultProfile", config.DefaultConfig().Usage, x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment},
+		{"OnlyKeyEnciphermentWithEKU", []string{"key encipherment", "server auth"}, x509.KeyUsageKeyEncipherment},
+	}
 
-	const wantKU = x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			template := &x509.Certificate{PublicKey: tt.pub}
-			if err := FillTemplate(template, config.DefaultConfig(), config.DefaultConfig(), time.Time{}, time.Time{}); err != nil {
-				t.Fatalf("FillTemplate() failed: %v", err)
-			}
-			if template.KeyUsage != wantKU {
-				t.Errorf("KeyUsage = %#b, want %#b", template.KeyUsage, wantKU)
-			}
-		})
+	for _, p := range profiles {
+		for _, k := range keys {
+			t.Run(p.name+"/"+k.name, func(t *testing.T) {
+				profile := config.DefaultConfig()
+				profile.Usage = p.usage
+				template := &x509.Certificate{PublicKey: k.pub}
+				if err := FillTemplate(template, config.DefaultConfig(), profile, time.Time{}, time.Time{}); err != nil {
+					t.Fatalf("FillTemplate() failed: %v", err)
+				}
+				if template.KeyUsage != p.wantKU {
+					t.Errorf("KeyUsage = %#b, want %#b", template.KeyUsage, p.wantKU)
+				}
+			})
+		}
 	}
 }
