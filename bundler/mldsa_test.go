@@ -2,16 +2,23 @@ package bundler
 
 import (
 	"bytes"
+	"crypto"
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/mldsa"
 	"crypto/rand"
+	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/asn1"
 	"encoding/json"
 	"encoding/pem"
 	"math/big"
+	"slices"
 	"testing"
 	"time"
+
+	"github.com/cloudflare/cfssl/errors"
 )
 
 func TestMLDSABundle(t *testing.T) {
@@ -35,6 +42,7 @@ func TestMLDSABundle(t *testing.T) {
 			if err != nil {
 				t.Fatalf("bundling with private key: %v", err)
 			}
+			checkKeyAlgoWarnings(t, bundle, false, true)
 
 			if _, err := bundler.Bundle([]*x509.Certificate{cert}, nil, Force); err != nil {
 				t.Fatalf("bundling without private key: %v", err)
@@ -109,6 +117,114 @@ func TestMLDSABundle(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestMLDSABundleKeyAlgoWarnings(t *testing.T) {
+	mldsaKey, err := mldsa.GenerateKey(mldsa.MLDSA65())
+	if err != nil {
+		t.Fatalf("generating ML-DSA key: %v", err)
+	}
+	ecdsaKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatalf("generating ECDSA key: %v", err)
+	}
+	rsaKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatalf("generating RSA key: %v", err)
+	}
+
+	mldsaCA := newTestCertificate(t, "ML-DSA CA", mldsaKey, nil, nil)
+	ecdsaCA := newTestCertificate(t, "ECDSA CA", ecdsaKey, nil, nil)
+	rsaCA := newTestCertificate(t, "RSA CA", rsaKey, nil, nil)
+
+	tests := []struct {
+		name             string
+		chain            []*x509.Certificate
+		wantECDSAWarning bool
+		wantMLDSAWarning bool
+	}{
+		{
+			name:             "MLDSAOnly",
+			chain:            []*x509.Certificate{mldsaCA},
+			wantMLDSAWarning: true,
+		},
+		{
+			name:             "RSAIssuerMLDSALeaf",
+			chain:            []*x509.Certificate{newTestCertificate(t, "ML-DSA leaf", mldsaKey, rsaCA, rsaKey), rsaCA},
+			wantMLDSAWarning: true,
+		},
+		{
+			name:             "ECDSAIssuerMLDSALeaf",
+			chain:            []*x509.Certificate{newTestCertificate(t, "ML-DSA leaf", mldsaKey, ecdsaCA, ecdsaKey), ecdsaCA},
+			wantECDSAWarning: true,
+			wantMLDSAWarning: true,
+		},
+		{
+			name:             "MLDSAIssuerECDSALeaf",
+			chain:            []*x509.Certificate{newTestCertificate(t, "ECDSA leaf", ecdsaKey, mldsaCA, mldsaKey), mldsaCA},
+			wantECDSAWarning: true,
+			wantMLDSAWarning: true,
+		},
+		{
+			name:             "ECDSAOnly",
+			chain:            []*x509.Certificate{ecdsaCA},
+			wantECDSAWarning: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			bundle, err := new(Bundler).Bundle(tt.chain, nil, Force)
+			if err != nil {
+				t.Fatalf("bundling: %v", err)
+			}
+			checkKeyAlgoWarnings(t, bundle, tt.wantECDSAWarning, tt.wantMLDSAWarning)
+		})
+	}
+}
+
+func checkKeyAlgoWarnings(t *testing.T, bundle *Bundle, wantECDSA, wantMLDSA bool) {
+	t.Helper()
+
+	if bundle.Status.Code&errors.BundleNotUbiquitousBit == 0 {
+		t.Errorf("status code %d lacks BundleNotUbiquitousBit", bundle.Status.Code)
+	}
+	if got := slices.Contains(bundle.Status.Messages, ecdsaWarning); got != wantECDSA {
+		t.Errorf("ECDSA warning present = %t, want %t; messages: %q", got, wantECDSA, bundle.Status.Messages)
+	}
+	if got := slices.Contains(bundle.Status.Messages, mldsaWarning); got != wantMLDSA {
+		t.Errorf("ML-DSA warning present = %t, want %t; messages: %q", got, wantMLDSA, bundle.Status.Messages)
+	}
+}
+
+// newTestCertificate issues a certificate for key signed by issuerKey. A nil
+// issuer makes it a self-signed CA certificate.
+func newTestCertificate(t *testing.T, commonName string, key crypto.Signer, issuer *x509.Certificate, issuerKey crypto.Signer) *x509.Certificate {
+	t.Helper()
+
+	now := time.Now()
+	template := &x509.Certificate{
+		SerialNumber:          big.NewInt(1),
+		Subject:               pkix.Name{CommonName: commonName},
+		NotBefore:             now.Add(-time.Minute),
+		NotAfter:              now.Add(time.Hour),
+		KeyUsage:              x509.KeyUsageDigitalSignature,
+		BasicConstraintsValid: true,
+	}
+	if issuer == nil {
+		template.IsCA = true
+		template.KeyUsage |= x509.KeyUsageCertSign
+		issuer, issuerKey = template, key
+	}
+	der, err := x509.CreateCertificate(rand.Reader, template, issuer, key.Public(), issuerKey)
+	if err != nil {
+		t.Fatalf("creating %s certificate: %v", commonName, err)
+	}
+	cert, err := x509.ParseCertificate(der)
+	if err != nil {
+		t.Fatalf("parsing %s certificate: %v", commonName, err)
+	}
+	return cert
 }
 
 func newMLDSASelfSignedCertificate(t *testing.T, params mldsa.Parameters, sigAlgo x509.SignatureAlgorithm) (*mldsa.PrivateKey, *x509.Certificate) {
