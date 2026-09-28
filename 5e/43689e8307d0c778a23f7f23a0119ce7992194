@@ -1,0 +1,40 @@
+go.sum
+  s_fa5d310f4d3eec::t_8032ef0663bddf 163,225,229,306,542,690,707
+signer/local/local_test.go
+  s_fa5d310f4d3eec::t_a3a566e630c65a 1467-1478,1480,1486,1492
+  s_607ad535354c2e::t_8117f208b22a03 1508-1511,1520-1525,1591,1602,1614
+bundler/testdata/negative-serial-root.pem
+  s_bc2186d8f5ba84::t_5bf7d4a009e863 1-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "5e43689e8307d0c778a23f7f23a0119ce7992194",
+  "prompts": {},
+  "sessions": {
+    "s_607ad535354c2e": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f593c3a95ffekTO02lDJ65Tj6L",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Alex Ng <ang@cloudflare.com>"
+    },
+    "s_bc2186d8f5ba84": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f2a01c385ffewYfAWDTfPlsI7f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Alex Ng <ang@cloudflare.com>"
+    },
+    "s_fa5d310f4d3eec": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fbfe73f63ffejysjtfR4fr19Ds",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Alex Ng <ang@cloudflare.com>"
+    }
+  }
+}
