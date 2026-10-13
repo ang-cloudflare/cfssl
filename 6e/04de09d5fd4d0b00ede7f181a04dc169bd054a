@@ -1,0 +1,19 @@
+.github/workflows/go.yml
+  s_f027a2606a78d1::t_516a48ed8fb5cf 87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "6e04de09d5fd4d0b00ede7f181a04dc169bd054a",
+  "prompts": {},
+  "sessions": {
+    "s_f027a2606a78d1": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_ede336192ffe4KNjLjB3s8ISvK",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Alex Ng <ang@cloudflare.com>"
+    }
+  }
+}
